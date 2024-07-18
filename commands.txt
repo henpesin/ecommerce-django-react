@@ -1,0 +1,29 @@
+.\venv\Scripts\activate
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+
+להתחיל צד לקוח 
+cd frontend
+npm install
+npm start
+
+vagrant ssh jenkins
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+vagrant ssh app
+
+cd /vagrant
+
+python3.9 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+
+git add .
+
+git commit -m "First commit"
+
+git push origin main
+
