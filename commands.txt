@@ -27,3 +27,4 @@ git commit -m "First commit"
 
 git push origin main
 
+  git config --global user.email "henpesin@gmail.com"
