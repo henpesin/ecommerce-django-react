@@ -5,9 +5,17 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
         EMAIL_RECIPIENTS = 'henpesin@gmail.com'
+        APP_MACHINE_IP = '192.168.56.11'
+        APP_MACHINE_USER = 'henpe'
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -16,24 +24,11 @@ pipeline {
             }
         }
 
-        stage('Run Application Locally') {
-            steps {
-                script {
-                    // Run the application locally
-                    sh 'docker run -d --name local_app -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'
-                }
-            }
-        }
-
         stage('Run Tests') {
             steps {
                 script {
-                    // Run tests against the local application
-                    try {
-                        sh 'docker exec local_app python manage.py test'
-                    } finally {
-                        // Always remove the local application container
-                        sh 'docker rm -f local_app'
+                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").inside {
+                        sh 'python manage.py test'
                     }
                 }
             }
@@ -57,16 +52,8 @@ pipeline {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
-                script {
-                    sshagent(['app-machine-credentials']) {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no vagrant@127.0.0.1 -p 2200 '
-                            docker pull ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER} &&
-                            docker stop deployed_app || true &&
-                            docker rm deployed_app || true &&
-                            docker run -d --name deployed_app -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'
-                        '''
-                    }
+                sshagent(['app-machine-credentials']) {
+                    sh "ssh ${env.APP_MACHINE_USER}@${env.APP_MACHINE_IP} 'docker pull ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER} && docker run -d -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'"
                 }
             }
         }
