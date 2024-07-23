@@ -11,6 +11,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
@@ -27,7 +28,7 @@ pipeline {
             steps {
                 script {
                     docker.image("${env.DOCKERHUB_REPO}:latest").inside {
-                        sh 'pytest'
+                        sh 'python manage.py test'
                     }
                 }
             }
