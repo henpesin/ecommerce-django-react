@@ -51,6 +51,9 @@ Vagrant.configure("2") do |config|
       # Start Jenkins
       sudo systemctl start jenkins
       sudo systemctl enable jenkins
+
+      # Configure sudoers file for Jenkins user
+      echo "jenkins ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/jenkins
     SHELL
   end
 
