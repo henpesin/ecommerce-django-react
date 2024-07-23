@@ -20,8 +20,8 @@ pipeline {
             steps {
                 sh '''
                 echo "Installing dependencies using apt..."
-                sudo apt-get update -y
-                sudo apt-get install -y python3 python3-pip nodejs npm
+                echo 'vagrant' | sudo -S apt-get update -y
+                echo 'vagrant' | sudo -S apt-get install -y python3 python3-pip nodejs npm
 
                 echo "Setting up virtual environment and installing dependencies..."
                 python3 -m venv .venv
