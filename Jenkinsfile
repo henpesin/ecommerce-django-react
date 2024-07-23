@@ -1,16 +1,11 @@
 pipeline {
-    agent {
-        label 'any'
-    }
+    agent any
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
+        EMAIL_RECIPIENTS = 'henpesin@gmail.com'
         SSH_CREDENTIALS = credentials('app-machine-credentials')
-        DJANGO_SETTINGS_MODULE = 'backend.settings'
-        SECRET_KEY = credentials('django-secret-key')
-        DEBUG = 'True'  // Set to 'False' for production
-        ALLOWED_HOSTS = 'localhost,127.0.0.1,192.168.56.11'
     }
 
     stages {
@@ -32,7 +27,7 @@ pipeline {
             steps {
                 script {
                     docker.image("${env.DOCKERHUB_REPO}:latest").inside {
-                        sh 'python manage.py test'
+                        sh 'pytest'
                     }
                 }
             }
@@ -78,14 +73,14 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed.'
+            mail to: "${env.EMAIL_RECIPIENTS}",
+                 subject: "Jenkins Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
+                 body: "The build ${env.BUILD_NUMBER} of job ${env.JOB_NAME} failed. Please check the console output for more details: ${env.BUILD_URL}"
         }
 
         always {
-            node {
-                archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
-                junit 'reports/**/*.xml'
-            }
+            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
+            junit 'reports/**/*.xml'
         }
     }
 }
