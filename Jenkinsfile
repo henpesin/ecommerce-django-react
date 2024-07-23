@@ -5,23 +5,14 @@ pipeline {
         // Define your environment variables here
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
-        GIT_REPO = 'https://github.com/henpesin/ecommerce-django-react.git'
-        GIT_BRANCH = 'main'
         EMAIL_RECIPIENTS = 'henpesin@gmail.com'
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                // Checkout code from GitHub
-                git branch: "${env.GIT_BRANCH}", url: "${env.GIT_REPO}"
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${env.DOCKERHUB_REPO}:${env.GIT_BRANCH}")
+                    docker.build("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}")
                 }
             }
         }
@@ -29,7 +20,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:${env.GIT_BRANCH}").inside {
+                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").inside {
                         sh 'python manage.py test'
                     }
                 }
@@ -43,7 +34,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub') {
-                        docker.image("${env.DOCKERHUB_REPO}:${env.GIT_BRANCH}").push()
+                        docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").push()
                     }
                 }
             }
@@ -55,7 +46,7 @@ pipeline {
             }
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:${env.GIT_BRANCH}").run('-p 8000:8000')
+                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").run('-p 8000:8000')
                 }
             }
         }
