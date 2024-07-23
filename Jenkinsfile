@@ -5,13 +5,13 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
         EMAIL_RECIPIENTS = 'henpesin@gmail.com'
-        APP_MACHINE_IP = '192.168.56.11'
-        APP_MACHINE_USER = 'henpe'
+        SSH_CREDENTIALS = credentials('app-machine-credentials')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}")
+                    docker.build("${env.DOCKERHUB_REPO}:latest")
                 }
             }
         }
@@ -27,7 +27,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").inside {
+                    docker.image("${env.DOCKERHUB_REPO}:latest").inside {
                         sh 'python manage.py test'
                     }
                 }
@@ -41,7 +41,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub') {
-                        docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").push()
+                        docker.image("${env.DOCKERHUB_REPO}:latest").push()
                     }
                 }
             }
@@ -52,8 +52,17 @@ pipeline {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
-                sshagent(['app-machine-credentials']) {
-                    sh "ssh ${env.APP_MACHINE_USER}@${env.APP_MACHINE_IP} 'docker pull ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER} && docker run -d -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'"
+                script {
+                    sshagent(credentials: ['app-machine-credentials']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no henpe@192.168.56.11 << EOF
+                        docker pull ${env.DOCKERHUB_REPO}:latest
+                        docker stop django-app || true
+                        docker rm django-app || true
+                        docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
+                        EOF
+                        """
+                    }
                 }
             }
         }
