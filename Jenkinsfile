@@ -5,13 +5,11 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
         SSH_CREDENTIALS = credentials('jenkins-key')
-        EMAIL_RECIPIENTS = 'henpesin@gmail.com'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
@@ -20,8 +18,8 @@ pipeline {
             steps {
                 sh '''
                 echo "Installing dependencies using apt..."
-                echo 'vagrant' | sudo -S apt-get update -y
-                echo 'vagrant' | sudo -S apt-get install -y python3 python3-pip nodejs npm
+                sudo apt-get update -y
+                sudo apt-get install -y python3 python3-pip nodejs npm python3-venv
 
                 echo "Setting up virtual environment and installing dependencies..."
                 python3 -m venv .venv
@@ -57,7 +55,7 @@ pipeline {
                         . .venv/bin/activate
 
                         echo "Running tests..."
-                        pytest --html=./report.html
+                        pytest --html-report=./report.html
                         '''
                     }
                 }
@@ -79,9 +77,6 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
             steps {
                 script {
                     docker.build("${env.DOCKERHUB_REPO}:latest")
@@ -106,10 +101,10 @@ pipeline {
             steps {
                 script {
                     sshagent(credentials: ['jenkins-key']) {
-                        sh '''
+                        sh """
                         echo Testing SSH connection...
                         ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 echo SSH connection successful
-                        '''
+                        """
                     }
                 }
             }
@@ -122,14 +117,14 @@ pipeline {
             steps {
                 script {
                     sshagent(credentials: ['jenkins-key']) {
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 bash -s << 'ENDSSH'
+                        sh """
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 << EOF
                         docker pull ${env.DOCKERHUB_REPO}:latest
                         docker stop django-app || true
                         docker rm django-app || true
                         docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
-                        ENDSSH
-                        '''
+                        EOF
+                        """
                     }
                 }
             }
@@ -143,9 +138,6 @@ pipeline {
 
         failure {
             echo 'Pipeline failed.'
-            mail to: "${env.EMAIL_RECIPIENTS}",
-                 subject: "Jenkins Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
-                 body: "The build ${env.BUILD_NUMBER} of job ${env.JOB_NAME} failed. Please check the console output for more details: ${env.BUILD_URL}"
         }
 
         always {
