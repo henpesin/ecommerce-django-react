@@ -59,7 +59,7 @@ pipeline {
                         . .venv/bin/activate
 
                         echo "Running tests..."
-                        pytest --html=./report.html
+                        pytest --junitxml=reports/results.xml --html=report.html
                         '''
                     }
                 }
@@ -145,8 +145,8 @@ pipeline {
         }
 
         always {
-            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
-            junit 'reports/**/*.xml'
+            archiveArtifacts artifacts: 'reports/results.xml', allowEmptyArchive: true
+            junit 'reports/results.xml'
         }
     }
 }
