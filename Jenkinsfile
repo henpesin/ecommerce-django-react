@@ -11,7 +11,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
