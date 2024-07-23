@@ -4,12 +4,13 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
-        SSH_CREDENTIALS = credentials('app-machine-credentials')
+        SSH_CREDENTIALS = credentials('jenkins-key')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
@@ -46,15 +47,12 @@ pipeline {
         }
 
         stage('Test SSH Connection') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
             steps {
                 script {
-                    sshagent(credentials: ['app-machine-credentials']) {
+                    sshagent(credentials: ['jenkins-key']) {
                         sh """
-                        echo 'Testing SSH connection...'
-                        ssh -o StrictHostKeyChecking=no henpe@192.168.56.11 echo 'SSH connection successful'
+                        echo Testing SSH connection...
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 echo SSH connection successful
                         """
                     }
                 }
@@ -67,9 +65,9 @@ pipeline {
             }
             steps {
                 script {
-                    sshagent(credentials: ['app-machine-credentials']) {
+                    sshagent(credentials: ['jenkins-key']) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no henpe@192.168.56.11 << EOF
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 << EOF
                         docker pull ${env.DOCKERHUB_REPO}:latest
                         docker stop django-app || true
                         docker rm django-app || true
