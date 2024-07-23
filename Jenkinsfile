@@ -6,6 +6,10 @@ pipeline {
         DOCKERHUB_REPO = 'henpe36/django-app'
         EMAIL_RECIPIENTS = 'henpesin@gmail.com'
         SSH_CREDENTIALS = credentials('app-machine-credentials')
+        DJANGO_SETTINGS_MODULE = 'backend.settings'
+        SECRET_KEY = credentials('django-secret-key')
+        DEBUG = 'True'  // Set to 'False' for production
+        ALLOWED_HOSTS = 'localhost,127.0.0.1,192.168.56.11'
     }
 
     stages {
@@ -26,7 +30,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:latest").inside {
+                    docker.image("${env.DOCKERHUB_REPO}:latest").inside("-e DJANGO_SETTINGS_MODULE=${env.DJANGO_SETTINGS_MODULE} -e SECRET_KEY=${env.SECRET_KEY} -e DEBUG=${env.DEBUG} -e ALLOWED_HOSTS=${env.ALLOWED_HOSTS}") {
                         sh 'pytest'
                     }
                 }
@@ -58,7 +62,7 @@ pipeline {
                         docker pull ${env.DOCKERHUB_REPO}:latest
                         docker stop django-app || true
                         docker rm django-app || true
-                        docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
+                        docker run -d -p 8000:8000 --name django-app -e DJANGO_SETTINGS_MODULE=${env.DJANGO_SETTINGS_MODULE} -e SECRET_KEY=${env.SECRET_KEY} -e DEBUG=${env.DEBUG} -e ALLOWED_HOSTS=${env.ALLOWED_HOSTS} ${env.DOCKERHUB_REPO}:latest
                         EOF
                         """
                     }
