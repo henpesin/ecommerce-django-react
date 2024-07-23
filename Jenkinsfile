@@ -5,6 +5,7 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
         SSH_CREDENTIALS = credentials('jenkins-key')
+        EMAIL_RECIPIENTS = 'henpesin@gmail.com'
     }
 
     stages {
@@ -15,20 +16,75 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Locally') {
+            steps {
+                sh '''
+                echo "Installing dependencies using apt..."
+                sudo apt-get update -y
+                sudo apt-get install -y python3 python3-pip nodejs npm
+
+                echo "Setting up virtual environment and installing dependencies..."
+                python3 -m venv .venv
+                . .venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+
+                echo "Building frontend..."
+                cd frontend
+                npm install
+                npm run build
+                cd ..
+
+                echo "Running database migrations..."
+                .venv/bin/python manage.py makemigrations
+                .venv/bin/python manage.py migrate
+
+                echo "Collecting static files..."
+                .venv/bin/python manage.py collectstatic --noinput
+
+                echo "Starting Django development server..."
+                nohup .venv/bin/python manage.py runserver 0.0.0.0:8000 &
+                '''
+            }
+        }
+
+        stage('Test Locally') {
             steps {
                 script {
-                    docker.build("${env.DOCKERHUB_REPO}:latest")
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        sh '''
+                        echo "Activating virtual environment..."
+                        . .venv/bin/activate
+
+                        echo "Running tests..."
+                        pytest --html=./report.html
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Run Tests') {
+        stage('Publish Report') {
+            steps {
+                publishHTML(target: [
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: '.',
+                    reportFiles: 'report.html',
+                    reportName: 'Test Report',
+                    reportTitles: 'Test Report'
+                ])
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:latest").inside {
-                        sh 'python manage.py test'
-                    }
+                    docker.build("${env.DOCKERHUB_REPO}:latest")
                 }
             }
         }
@@ -50,10 +106,10 @@ pipeline {
             steps {
                 script {
                     sshagent(credentials: ['jenkins-key']) {
-                        sh """
+                        sh '''
                         echo Testing SSH connection...
                         ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 echo SSH connection successful
-                        """
+                        '''
                     }
                 }
             }
@@ -66,14 +122,14 @@ pipeline {
             steps {
                 script {
                     sshagent(credentials: ['jenkins-key']) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 "
-                        docker pull ${env.DOCKERHUB_REPO}:latest &&
-                        docker stop django-app || true &&
-                        docker rm django-app || true &&
+                        sh '''
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 bash -s << 'ENDSSH'
+                        docker pull ${env.DOCKERHUB_REPO}:latest
+                        docker stop django-app || true
+                        docker rm django-app || true
                         docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
-                        "
-                        """
+                        ENDSSH
+                        '''
                     }
                 }
             }
@@ -87,6 +143,9 @@ pipeline {
 
         failure {
             echo 'Pipeline failed.'
+            mail to: "${env.EMAIL_RECIPIENTS}",
+                 subject: "Jenkins Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
+                 body: "The build ${env.BUILD_NUMBER} of job ${env.JOB_NAME} failed. Please check the console output for more details: ${env.BUILD_URL}"
         }
 
         always {
