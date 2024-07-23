@@ -30,8 +30,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:latest").inside("-e DJANGO_SETTINGS_MODULE=${env.DJANGO_SETTINGS_MODULE} -e SECRET_KEY=${env.SECRET_KEY} -e DEBUG=${env.DEBUG} -e ALLOWED_HOSTS=${env.ALLOWED_HOSTS}") {
-                        sh 'pytest'
+                    docker.image("${env.DOCKERHUB_REPO}:latest").inside {
+                        sh 'python manage.py test'
                     }
                 }
             }
@@ -62,7 +62,7 @@ pipeline {
                         docker pull ${env.DOCKERHUB_REPO}:latest
                         docker stop django-app || true
                         docker rm django-app || true
-                        docker run -d -p 8000:8000 --name django-app -e DJANGO_SETTINGS_MODULE=${env.DJANGO_SETTINGS_MODULE} -e SECRET_KEY=${env.SECRET_KEY} -e DEBUG=${env.DEBUG} -e ALLOWED_HOSTS=${env.ALLOWED_HOSTS} ${env.DOCKERHUB_REPO}:latest
+                        docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
                         EOF
                         """
                     }
@@ -83,10 +83,8 @@ pipeline {
         }
 
         always {
-            node('master') {
-                archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
-                junit 'reports/**/*.xml'
-            }
+            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
+            junit 'reports/**/*.xml'
         }
     }
 }
