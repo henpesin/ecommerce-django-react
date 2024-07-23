@@ -4,14 +4,12 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
-        EMAIL_RECIPIENTS = 'henpesin@gmail.com'
         SSH_CREDENTIALS = credentials('app-machine-credentials')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from GitHub
                 git branch: 'main', url: 'https://github.com/henpesin/ecommerce-django-react.git'
             }
         }
@@ -47,6 +45,22 @@ pipeline {
             }
         }
 
+        stage('Test SSH Connection') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
+            steps {
+                script {
+                    sshagent(credentials: ['app-machine-credentials']) {
+                        sh """
+                        echo 'Testing SSH connection...'
+                        ssh -o StrictHostKeyChecking=no henpe@192.168.56.11 echo 'SSH connection successful'
+                        """
+                    }
+                }
+            }
+        }
+
         stage('Deploy to App Machine') {
             when {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
@@ -74,9 +88,7 @@ pipeline {
         }
 
         failure {
-            mail to: "${env.EMAIL_RECIPIENTS}",
-                 subject: "Jenkins Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
-                 body: "The build ${env.BUILD_NUMBER} of job ${env.JOB_NAME} failed. Please check the console output for more details: ${env.BUILD_URL}"
+            echo 'Pipeline failed.'
         }
 
         always {
