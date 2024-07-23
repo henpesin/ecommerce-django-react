@@ -83,7 +83,7 @@ pipeline {
         }
 
         always {
-            node {
+            node('any') {
                 archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
                 junit 'reports/**/*.xml'
             }
