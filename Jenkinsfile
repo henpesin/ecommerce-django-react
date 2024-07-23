@@ -27,7 +27,7 @@ pipeline {
             steps {
                 script {
                     docker.image("${env.DOCKERHUB_REPO}:latest").inside {
-                        sh 'python manage.py test'
+                        sh 'pytest'
                     }
                 }
             }
