@@ -19,7 +19,11 @@ pipeline {
                 sh '''
                 echo "Installing dependencies using apt..."
                 sudo apt-get update -y
-                sudo apt-get install -y python3 python3-pip nodejs npm python3-venv
+                sudo apt-get install -y python3 python3-pip python3-venv
+
+                echo "Installing Node.js..."
+                curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+                sudo apt-get install -y nodejs
 
                 echo "Setting up virtual environment and installing dependencies..."
                 python3 -m venv .venv
@@ -55,7 +59,7 @@ pipeline {
                         . .venv/bin/activate
 
                         echo "Running tests..."
-                        pytest --html-report=./report.html
+                        pytest --html=./report.html
                         '''
                     }
                 }
