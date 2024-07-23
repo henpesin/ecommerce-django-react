@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Define your environment variables here
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_REPO = 'henpe36/django-app'
         EMAIL_RECIPIENTS = 'henpesin@gmail.com'
@@ -17,11 +16,24 @@ pipeline {
             }
         }
 
+        stage('Run Application Locally') {
+            steps {
+                script {
+                    // Run the application locally
+                    sh 'docker run -d --name local_app -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'
+                }
+            }
+        }
+
         stage('Run Tests') {
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").inside {
-                        sh 'python manage.py test'
+                    // Run tests against the local application
+                    try {
+                        sh 'docker exec local_app python manage.py test'
+                    } finally {
+                        // Always remove the local application container
+                        sh 'docker rm -f local_app'
                     }
                 }
             }
@@ -40,13 +52,21 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to App Machine') {
             when {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
                 script {
-                    docker.image("${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}").run('-p 8000:8000')
+                    sshagent(['app-machine-credentials']) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no vagrant@127.0.0.1 -p 2200 '
+                            docker pull ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER} &&
+                            docker stop deployed_app || true &&
+                            docker rm deployed_app || true &&
+                            docker run -d --name deployed_app -p 8000:8000 ${env.DOCKERHUB_REPO}:${env.BUILD_NUMBER}'
+                        '''
+                    }
                 }
             }
         }
