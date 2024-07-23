@@ -83,8 +83,10 @@ pipeline {
         }
 
         always {
-            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
-            junit 'reports/**/*.xml'
+            node {
+                archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
+                junit 'reports/**/*.xml'
+            }
         }
     }
 }
