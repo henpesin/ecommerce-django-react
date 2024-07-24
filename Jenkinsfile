@@ -14,92 +14,95 @@ pipeline {
             }
         }
 
-        stage('Build Locally') {
-            steps {
-                sh '''
-                echo "Installing dependencies using apt..."
-                sudo apt-get update -y
-                sudo apt-get install -y python3 python3-pip python3-venv
+        // stage('Build Locally') {
+        //     steps {
+        //         sh '''
+        //         echo "Installing dependencies using apt..."
+        //         sudo apt-get update -y
+        //         sudo apt-get install -y python3 python3-pip python3-venv
 
-                echo "Installing Node.js..."
-                curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-                sudo apt-get install -y nodejs
+        //         echo "Installing Node.js..."
+        //         curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+        //         sudo apt-get install -y nodejs
 
-                echo "Setting up virtual environment and installing dependencies..."
-                python3 -m venv .venv
-                . .venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
+        //         echo "Setting up virtual environment and installing dependencies..."
+        //         python3 -m venv .venv
+        //         . .venv/bin/activate
+        //         pip install --upgrade pip
+        //         pip install -r requirements.txt
 
-                echo "Building frontend..."
-                cd frontend
-                npm install
-                npm run build
-                cd ..
+        //         echo "Building frontend..."
+        //         cd frontend
+        //         npm install
+        //         npm run build
+        //         cd ..
 
-                echo "Running database migrations..."
-                .venv/bin/python manage.py makemigrations
-                .venv/bin/python manage.py migrate
+        //         echo "Running database migrations..."
+        //         .venv/bin/python manage.py makemigrations
+        //         .venv/bin/python manage.py migrate
 
-                echo "Collecting static files..."
-                .venv/bin/python manage.py collectstatic --noinput
+        //         echo "Collecting static files..."
+        //         .venv/bin/python manage.py collectstatic --noinput
 
-                echo "Starting Django development server..."
-                nohup .venv/bin/python manage.py runserver 0.0.0.0:8000 &
-                '''
-            }
-        }
+        //         echo "Starting Django development server..."
+        //         nohup .venv/bin/python manage.py runserver 0.0.0.0:8000 &
+        //         '''
+        //     }
+        // }
 
-        stage('Test Locally') {
-            steps {
-                script {
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        sh '''
-                        echo "Activating virtual environment..."
-                        . .venv/bin/activate
+        // stage('Test Locally') {
+        //     steps {
+        //         script {
+        //             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        //                 sh '''
+        //                 echo "Activating virtual environment..."
+        //                 . .venv/bin/activate
 
-                        echo "Running tests..."
-                        pytest --junitxml=reports/results.xml --html=reports/report.html
-                        '''
-                    }
-                }
-            }
-        }
+        //                 echo "Running tests..."
+        //                 pytest --html=reports/report.html
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
 
-        stage('Publish Report') {
-            steps {
-                publishHTML(target: [
-                    allowMissing: false,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'reports',
-                    reportFiles: 'report.html',
-                    reportName: 'Test Report',
-                    reportTitles: 'Test Report'
-                ])
-            }
-        }
+        // stage('Publish Report') {
+        //     steps {
+        //         publishHTML(target: [
+        //             allowMissing: false,
+        //             alwaysLinkToLastBuild: true,
+        //             keepAll: true,
+        //             reportDir: 'reports',
+        //             reportFiles: 'report.html',
+        //             reportName: 'Test Report',
+        //             reportTitles: 'Test Report'
+        //         ])
+        //     }
+        // }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.build("${env.DOCKERHUB_REPO}:latest")
-                }
-            }
-        }
+        // stage('Build Docker Image') {
+        //     when {
+        //         expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+        //     }
+        //     steps {
+        //         script {
+        //             docker.build("${env.DOCKERHUB_REPO}:latest")
+        //         }
+        //     }
+        // }
 
-        stage('Push Docker Image') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
-            steps {
-                script {
-                    docker.withRegistry('', 'dockerhub') {
-                        docker.image("${env.DOCKERHUB_REPO}:latest").push()
-                    }
-                }
-            }
-        }
+        // stage('Push Docker Image') {
+        //     when {
+        //         expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+        //     }
+        //     steps {
+        //         script {
+        //             docker.withRegistry('', 'dockerhub') {
+        //                 docker.image("${env.DOCKERHUB_REPO}:latest").push()
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Test SSH Connection') {
             steps {
@@ -145,8 +148,7 @@ pipeline {
         }
 
         always {
-            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
-            junit 'reports/**/*.xml'
+            archiveArtifacts artifacts: '**/reports/report.html', allowEmptyArchive: true
         }
     }
 }
