@@ -145,7 +145,7 @@ pipeline {
 
         failure {
             echo 'Pipeline failed.'
-            emailext body: """The build status is ${currentBuild.currentResult}, on project ${env.JOB_NAME}. Find test report in this URL: ${BUILD_URL}My_20Contacts/""",
+            emailext body: """The build status is ${currentBuild.currentResult}, on project ${env.JOB_NAME}. Find test report in this URL: ${BUILD_URL}Test_20Report/""",
                      subject: """You got a failed build/job ${env.JOB_NAME} - ${env.BUILD_NUMBER} from Jenkins""",
                      to: 'henpesin@gmail.com'
         }
