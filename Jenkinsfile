@@ -59,7 +59,7 @@ pipeline {
                         . .venv/bin/activate
 
                         echo "Running tests..."
-                        pytest --junitxml=reports/results.xml --html=report.html
+                        pytest --junitxml=reports/results.xml --html=reports/report.html
                         '''
                     }
                 }
@@ -72,7 +72,7 @@ pipeline {
                     allowMissing: false,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
-                    reportDir: '.',
+                    reportDir: 'reports',
                     reportFiles: 'report.html',
                     reportName: 'Test Report',
                     reportTitles: 'Test Report'
@@ -145,8 +145,8 @@ pipeline {
         }
 
         always {
-            archiveArtifacts artifacts: 'reports/results.xml', allowEmptyArchive: true
-            junit 'reports/results.xml'
+            archiveArtifacts artifacts: '**/reports/*.xml', allowEmptyArchive: true
+            junit 'reports/**/*.xml'
         }
     }
 }
