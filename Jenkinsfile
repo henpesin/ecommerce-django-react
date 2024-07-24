@@ -59,7 +59,7 @@ pipeline {
                         . .venv/bin/activate
 
                         echo "Running tests..."
-                        pytest --html=reports/report.html
+                        pytest --html-report=./report.html
                         '''
                     }
                 }
