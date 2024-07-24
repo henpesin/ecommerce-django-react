@@ -125,7 +125,7 @@ pipeline {
                 script {
                     sshagent(credentials: ['jenkins-key']) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 << EOF
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 <<EOF
                         docker pull ${env.DOCKERHUB_REPO}:latest
                         docker stop django-app || true
                         docker rm django-app || true
