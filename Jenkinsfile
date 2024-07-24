@@ -117,26 +117,26 @@ pipeline {
             }
         }
 
-            stage('Deploy to App Machine') {
-                when {
-                    expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-                }
-                steps {
-                    script {
-                        sshagent(credentials: ['jenkins-key']) {
-                            sh """
-                            ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 '
-                            docker pull ${env.DOCKERHUB_REPO}:latest
-                            docker stop django-app || true
-                            docker rm django-app || true
-                            docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
-                            '
-                            """
-                        }
+        stage('Deploy to App Machine') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
+            steps {
+                script {
+                    sshagent(credentials: ['jenkins-key']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 '
+                        docker pull ${env.DOCKERHUB_REPO}:latest
+                        docker stop django-app || true
+                        docker rm django-app || true
+                        docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
+                        '
+                        """
                     }
                 }
             }
-      }
+        }
+    }
 
     post {
         success {
@@ -145,6 +145,9 @@ pipeline {
 
         failure {
             echo 'Pipeline failed.'
+            emailext body: """The build status is ${currentBuild.currentResult}, on project ${env.JOB_NAME}. Find test report in this URL: ${BUILD_URL}My_20Contacts/""",
+                     subject: """You got a failed build/job ${env.JOB_NAME} - ${env.BUILD_NUMBER} from Jenkins""",
+                     to: 'henpesin@gmail.com'
         }
 
         always {
