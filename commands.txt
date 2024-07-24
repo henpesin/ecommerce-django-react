@@ -30,3 +30,5 @@ git push origin main
   git config --global user.email "henpesin@gmail.com"
 
 kulh hitx sapz feiv
+
+System.setProperty("hudson.model.DirectoryBrowserSupport.CSP", "") 
