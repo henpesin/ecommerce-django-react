@@ -117,26 +117,26 @@ pipeline {
             }
         }
 
-        stage('Deploy to App Machine') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
-            steps {
-                script {
-                    sshagent(credentials: ['jenkins-key']) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 <<EOF
-                        docker pull ${env.DOCKERHUB_REPO}:latest
-                        docker stop django-app || true
-                        docker rm django-app || true
-                        docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
-                        EOF
-                        """
+            stage('Deploy to App Machine') {
+                when {
+                    expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+                }
+                steps {
+                    script {
+                        sshagent(credentials: ['jenkins-key']) {
+                            sh """
+                            ssh -o StrictHostKeyChecking=no vagrant@192.168.56.11 '
+                            docker pull ${env.DOCKERHUB_REPO}:latest
+                            docker stop django-app || true
+                            docker rm django-app || true
+                            docker run -d -p 8000:8000 --name django-app ${env.DOCKERHUB_REPO}:latest
+                            '
+                            """
+                        }
                     }
                 }
             }
-        }
-    }
+      }
 
     post {
         success {
